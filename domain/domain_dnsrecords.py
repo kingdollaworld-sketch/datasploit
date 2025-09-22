@@ -1,28 +1,27 @@
 #!/usr/bin/env python
 
-import base
+try:
+    from ..core.style import style
+except ImportError:  # pragma: no cover - legacy script execution
+    from core.style import style
+
 import sys
 import dns.resolver
 from termcolor import colored
 
 ENABLED = True
-
-
-class style:
-    BOLD = '\033[1m'
-    END = '\033[0m'
-
+MODULE_NAME = "Domain DNS Records"
+REQUIRES = ()
 
 def fetch_dns_records(domain, rec_type):
     try:
-        answers = dns.resolver.query(domain, rec_type)
+        answers = dns.resolver.resolve(domain, rec_type)
         rec_list = []
         for rdata in answers:
             rec_list.append(str(rdata))
         return rec_list
     except:
         return colored("No Records Found", 'red')
-
 
 def parse_dns_records(domain):
     dict_dns_record = {}
@@ -35,29 +34,25 @@ def parse_dns_records(domain):
     dict_dns_record['AAAA Records'] = fetch_dns_records(domain, "AAAA")
     return dict_dns_record
 
-
 def banner():
-    print colored(style.BOLD + '---> Finding DNS Records.\n' + style.END, 'blue')
-
+    return f"Running {MODULE_NAME}"
 
 def main(domain):
     return parse_dns_records(domain)
 
-
 def output(data, domain=""):
     for x in data.keys():
-        print x
+        print(x)
         if "No" in data[x] and "Found" in data[x]:
-            print "\t%s" % data[x]
+            print("\t%s" % data[x])
             data[x] = ''
         else:
             for y in data[x]:
                 try:
-                    print "\t%s" % y
+                    print("\t%s" % y)
                 except:
                     pass
-    print "\n-----------------------------\n"
-
+    print("\n-----------------------------\n")
 
 if __name__ == "__main__":
     try:
@@ -66,5 +61,5 @@ if __name__ == "__main__":
         result = main(domain)
         output(result, domain)
     except Exception as e:
-        print e
-        print "Please provide a domain name as argument"
+        print(e)
+        print("Please provide a domain name as argument")

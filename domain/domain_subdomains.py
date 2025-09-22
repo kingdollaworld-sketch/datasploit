@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
-import base
+try:
+    from ..core.style import style
+except ImportError:  # pragma: no cover - legacy script execution
+    from core.style import style
+
 import sys
 import requests
 from bs4 import BeautifulSoup
@@ -14,18 +18,12 @@ warnings.filterwarnings("ignore")
 
 ENABLED = True
 WRITE_TEXT_FILE = True
-MODULE_NAME = "Domain_subdomains"
-
+MODULE_NAME = "Domain Subdomains"
+REQUIRES = ()
 
 '''
 Author(s): @upgoingstar & @khasmek
 '''
-
-class style:
-    BOLD = '\033[1m'
-    END = '\033[0m'
-
-
 
 def check_and_append_subdomains(subdomain, subdomain_list):
     if subdomain not in subdomain_list:
@@ -38,10 +36,10 @@ def check_and_append_other_domains(other_domain, other_related_domain_list):
     return other_related_domain_list
 
 def subdomains(domain, subdomain_list):
-    print colored(' [+] Extracting subdomains from DNS Dumpster\n', 'blue')
+    print(colored(' [+] Extracting subdomains from DNS Dumpster\n', 'blue'))
     r = requests.get("https://dnsdumpster.com/", verify=False)
     cookies = {}
-    if 'csrftoken' in r.cookies.keys():
+    if 'csrftoken' in r.cookies:
         cookies['csrftoken'] = r.cookies['csrftoken']
         data = {}
         data['csrfmiddlewaretoken'] = cookies['csrftoken']
@@ -49,36 +47,35 @@ def subdomains(domain, subdomain_list):
         headers = {}
         headers['Referer'] = "https://dnsdumpster.com/"
         req = requests.post("https://dnsdumpster.com/", data=data, cookies=cookies, headers=headers, verify=False)
-        soup = BeautifulSoup(req.content, 'lxml')
+        soup = BeautifulSoup(req.text, 'lxml')
         subdomains_new = soup.findAll('td', {"class": "col-md-4"})
         for subd in subdomains_new:
             if domain in subd.text:
                 subdomain_list = check_and_append_subdomains(subd.text.split()[0], subdomain_list)
     return subdomain_list
 
-
 def subdomains_from_netcraft(domain, subdomain_list):
-    print colored(' [+] Extracting subdomains Netcraft\n', 'blue')
+    print(colored(' [+] Extracting subdomains Netcraft\n', 'blue'))
     target_dom_name = domain.split(".")
     req1 = requests.get("http://searchdns.netcraft.com/?host=%s" % domain)
     link_regx = re.compile('<a href="http://toolbar.netcraft.com/site_report\?url=(.*)">')
-    links_list = link_regx.findall(req1.content)
+    links_list = link_regx.findall(req1.text)
     for x in links_list:
         dom_name = x.split("/")[2].split(".")
         if (dom_name[len(dom_name) - 1] == target_dom_name[1]) and (dom_name[len(dom_name) - 2] == target_dom_name[0]):
             subdomain_list = check_and_append_subdomains(x.split("/")[2], subdomain_list)
     num_regex = re.compile('Found (.*) site')
-    num_subdomains = num_regex.findall(req1.content)
+    num_subdomains = num_regex.findall(req1.text)
     if not num_subdomains:
         num_regex = re.compile('First (.*) sites returned')
-        num_subdomains = num_regex.findall(req1.content)
+        num_subdomains = num_regex.findall(req1.text)
     if num_subdomains:
         if num_subdomains[0] != str(0):
-            num_pages = int(num_subdomains[0]) / 20 + 1
+            num_pages = int(num_subdomains[0]) // 20 + 1
             if num_pages > 1:
                 last_regex = re.compile(
                     '<td align="left">%s.</td><td align="left">\n<a href="(.*)" rel="nofollow">' % (20))
-                last_item = last_regex.findall(req1.content)[0].split("/")[2]
+                last_item = last_regex.findall(req1.text)[0].split("/")[2]
                 next_page = 21
 
                 for x in range(2, num_pages):
@@ -86,7 +83,7 @@ def subdomains_from_netcraft(domain, subdomain_list):
                         domain, last_item, next_page)
                     req2 = requests.get(url)
                     link_regx = re.compile('<a href="http://toolbar.netcraft.com/site_report\?url=(.*)">')
-                    links_list = link_regx.findall(req2.content)
+                    links_list = link_regx.findall(req2.text)
                     for y in links_list:
                         dom_name1 = y.split("/")[2].split(".")
                         if (dom_name1[len(dom_name1) - 1] == target_dom_name[1]) and (
@@ -99,7 +96,6 @@ def subdomains_from_netcraft(domain, subdomain_list):
     else:
         pass
     return subdomain_list
-
 
 def ct_search(domain, subdomain_list, wildcard=True):
 
@@ -117,7 +113,7 @@ def ct_search(domain, subdomain_list, wildcard=True):
         3. Checking for repeated subdomain entries 
     ###################################################################
     '''
-    print colored(' [+] Extracting subdomains from Certificate Transparency Reports\n', 'blue')
+    print(colored(' [+] Extracting subdomains from Certificate Transparency Reports\n', 'blue'))
     subdomain_list_tmp = []
 
     base_url = "https://crt.sh/?q="
@@ -130,7 +126,7 @@ def ct_search(domain, subdomain_list, wildcard=True):
     r = requests.get(url=base_url, headers={'User-Agent': ua})
 
     if r.ok:
-        soup = BeautifulSoup(r.content, 'html.parser')
+        soup = BeautifulSoup(r.text, 'html.parser')
         try:
             table = soup.findAll('table')[2]
             rows = table.find_all(['tr'])
@@ -146,19 +142,14 @@ def ct_search(domain, subdomain_list, wildcard=True):
                     tmp = {}
                     if wildcard:
                         tmp['domain'] = cells[3].text
-                        #tmp['issuer'] = cells[4].text
                     else:
-                        tmp['domain'] = domain,
-                        #tmp['issuer'] = cells[3].text
+                        tmp['domain'] = domain
                     check_and_append_subdomains(tmp['domain'], subdomain_list)
                     #subdomain_list_tmp.append(tmp)
         except IndexError:
             print("Error retrieving information.")
 
     return subdomain_list_tmp
-
-
-
 
 '''def find_domains_from_next_page_ct(page_identifier, domain, subdomain_list, other_related_domain_list):
     url = "https://transparencyreport.google.com/transparencyreport/api/v3/httpsreport/ct/certsearch/page?p=%s" % page_identifier
@@ -183,7 +174,7 @@ def ct_search(domain, subdomain_list, wildcard=True):
         pass
 
 def subdomains_from_google_ct(domain, subdomain_list, other_related_domain_list):
-    print colored(' [+] Extracting subdomains from Certificate Transparency Reports\n', 'blue')
+    print(colored(' [+] Extracting subdomains from Certificate Transparency Reports\n', 'blue'))
     url = 'https://transparencyreport.google.com/transparencyreport/api/v3/httpsreport/ct/certsearch?include_expired=true&include_subdomains=true&domain=%s' % (domain)
     req = requests.get(url)
     obj = req.text
@@ -208,7 +199,7 @@ def subdomains_from_google_ct(domain, subdomain_list, other_related_domain_list)
     return subdomain_list, other_related_domain_list'''
 
 def subdomains_from_dnstrails(domain, subdomain_list):
-    print colored(' [+] Extracting subdomains from DNSTrails\n', 'blue')
+    print(colored(' [+] Extracting subdomains from DNSTrails\n', 'blue'))
     url = 'https://app.securitytrails.com/api/domain/info/' + domain
     headers = {
         'User-Agent': 'Mozilla/5.0 Firefox/57.0',
@@ -223,17 +214,16 @@ def subdomains_from_dnstrails(domain, subdomain_list):
             subdomains_new = data['result']['subdomains']
             for a in range(0, len(subdomains_new)):
                 subdomains_new[a] = subdomains_new[a] + '.' + domain
-                #print subdomains_new[a]
+                #print(subdomains_new[a])
                 subdomain_list = check_and_append_subdomains(subdomains_new[a], subdomain_list)
         else:
-            print colored(' [!] {}\n'.format(data['error']), 'yellow')
+            print(colored(' [!] {}\n'.format(data['error']), 'yellow'))
     else:
-        print colored(' [+] DNSTrails API rate limit exceeded\n', 'yellow')
+        print(colored(' [+] DNSTrails API rate limit exceeded\n', 'yellow'))
     return subdomain_list
 
 def banner():
-    print colored(style.BOLD + '---> Finding subdomains, will be back soon with list. \n' + style.END, 'blue')
-
+    return f"Running {MODULE_NAME}"
 
 def main(domain):
     time.sleep(0.3)
@@ -247,21 +237,18 @@ def main(domain):
     # not printing list of 'other_related_domain_list' anywhere. This is done for later changes.
     return subdomain_list
 
-
 def output(data, domain=""):
-    print colored("List of subdomains found\n", 'green')
+    print(colored("List of subdomains found\n", 'green'))
     for sub in data:
-	if not re.match("\d{4}-\d{2}-\d{2}", sub):
-            print sub
-
+        if not re.match("\d{4}-\d{2}-\d{2}", sub):
+            print(sub)
 
 def output_text(data):
-	ret_out = []
-	for sub in data:
-        	if not re.match("\d{4}-\d{2}-\d{2}", sub):
-        		ret_out.append(sub)
-	return "\n".join(ret_out)
-
+    ret_out = []
+    for sub in data:
+        if not re.match("\d{4}-\d{2}-\d{2}", sub):
+            ret_out.append(sub)
+    return "\n".join(ret_out)
 
 if __name__ == "__main__":
     if len(sys.argv) != 0:
@@ -272,4 +259,4 @@ if __name__ == "__main__":
         output(result, domain)
         #except Exception as e:
     else:
-        print "Please provide a domain name as argument"
+        print("Please provide a domain name as argument")

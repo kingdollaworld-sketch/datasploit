@@ -1,38 +1,35 @@
 #!/usr/bin/env python
 
-import base
+try:
+    from ..core.style import style
+    from ..core.config import get_config_value
+except ImportError:  # pragma: no cover - legacy script execution
+    from core.style import style
+    from core.config import get_config_value
+
 import json
 import requests
 import time
-import vault
 import sys
 
 from termcolor import colored
 
-
 # Control whether the module is enabled or not
 ENABLED = False
+MODULE_NAME = "Domain Urlscan.io"
+REQUIRES = ("urlscanio_api",)
 
 # Set alternative UserAgent, if desired, here.
 custom_agent = 'DataSploit - (https://github.com/DataSploit/datasploit)'
 
-
-class style:
-    BOLD = '\033[1m'
-    END = '\033[0m'
-
-
 def banner():
-    print(colored(style.BOLD + '\n[+] Scanning with urlscan.io.\n' +
-                  style.END, 'blue'))
-
+    return f"Running {MODULE_NAME}"
 
 def build_headers(user_agent='', referer=''):
     headers = {}
     headers['Content-Type'] = 'application/json'
-    headers['API-key'] = vault.get_key('urlscanio_api')
+    headers['API-key'] = get_config_value('urlscanio_api')
     return headers
-
 
 # We'll allow setting referer urls and public scans if using DataSploit as a
 # module, but is otherwise hidden from the cli portion for ease of use.
@@ -50,7 +47,6 @@ def start_scan(domain, headers, public_scan=False, custom_agent='', referer=''):
                       data=json.dumps(data))
     return r
 
-
 def get_results(uuid):
     url = 'https://urlscan.io/api/v1/result/{}'.format(uuid)
     not_completed = True
@@ -63,10 +59,8 @@ def get_results(uuid):
             else:
                 time.sleep(10)
         except requests.exceptions.ConnectionError:
-            print(colored(style.BOLD + " [!] COULD NOT CONNECT TO URLSCAN.IO" +
-                  style.END, 'red'))
+            print(colored(style.BOLD + " [!] COULD NOT CONNECT TO URLSCAN.IO" + style.END, 'red'))
             sys.exit(0)
-
 
 def main(domain):
     headers = build_headers()
@@ -78,7 +72,6 @@ def main(domain):
     time.sleep(5)
     results = get_results(scan['uuid'])
     return results.json()
-
 
 def output(data, domain=""):
     task_fields = {
@@ -101,14 +94,13 @@ def output(data, domain=""):
                      'lists': lists_fields,
                      'stats': stats_fields
                     }
-    for search_field, fields_lists in master_fields.iteritems():
-        for field, pname in fields_lists.iteritems():
+    for search_field, fields_lists in master_fields.items():
+        for field, pname in fields_lists.items():
             if field in data[search_field]:
                 if isinstance(data[search_field][field], list):
                     print(" [+] {}: {}".format(pname, ', '.join(data[search_field][field])))
                 else:
                     print(" [+] {}: {}".format(pname, data[search_field][field]))
-
 
 if __name__ == "__main__":
     try:
@@ -117,5 +109,5 @@ if __name__ == "__main__":
         result = main(domain)
         output(result, domain)
     except Exception as e:
-        print e
-        print "Please provide a domain name as argument"
+        print(e)
+        print("Please provide a domain name as argument")

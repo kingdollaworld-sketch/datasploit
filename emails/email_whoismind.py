@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
-import base
+try:
+    from ..core.style import style
+except ImportError:  # pragma: no cover - legacy script execution
+    from core.style import style
+
 import sys
 import requests
 from bs4 import BeautifulSoup
@@ -8,20 +12,15 @@ from termcolor import colored
 
 # Control whether the module is enabled or not
 ENABLED = True
-
-
-class style:
-    BOLD = '\033[1m'
-    END = '\033[0m'
-
+MODULE_NAME = "Email Whoismind"
+REQUIRES = ()
 
 def banner():
-    print colored(style.BOLD + '\n---> Searching Whoismind for associated domains\n' + style.END, 'blue')
-
+    return f"Running {MODULE_NAME}"
 
 def main(email):
-    req = requests.get('http://www.whoismind.com/email/%s.html' % (email))
-    soup = BeautifulSoup(req.content, "lxml")
+    req = requests.get('http://www.whoismind.com/email/%s.html' % email)
+    soup = BeautifulSoup(req.text, "lxml")
     atag = soup.findAll('a')
     domains = []
     for at in atag:
@@ -30,13 +29,13 @@ def main(email):
     domains = list(set(domains))
     return domains
 
-
 def output(data, email=""):
-    for domain in data:
-        if domain:
-            print domain
-    print "\n-----------------------------\n"
-
+    if len(data) == 0:
+        print(colored("[-] No domains found", 'red'))
+    else:
+        for domain in data:
+            if domain:
+                print(domain)
 
 if __name__ == "__main__":
     try:
@@ -45,5 +44,5 @@ if __name__ == "__main__":
         result = main(email)
         output(result, email)
     except Exception as e:
-        print e
-        print "Please provide an email as argument"
+        print(e)
+        print("Please provide an email as argument")

@@ -1,24 +1,18 @@
 #!/usr/bin/env python
-import base
+
+try:
+    from ..core.style import style
+    from ..core.config import get_config_value
+except ImportError:  # pragma: no cover - legacy script execution
+    from core.style import style
+    from core.config import get_config_value
+
 import re, sys, json, time, requests
-import vault
 from termcolor import colored
 
-
 ENABLED = True
-
-class style:
-    BOLD = '\033[1m'
-    END = '\033[0m'
-
-def check_api_keys():
-    try:
-        if vault.get_key('censysio_id') != None and vault.get_key('censysio_secret') != None:
-            return True
-        else:
-            return False
-    except:
-        return False
+MODULE_NAME = "Domain Censys"
+REQUIRES = ("censysio_id", "censysio_secret")
 
 def censys_search(domain):
     censys_list = []
@@ -26,19 +20,19 @@ def censys_search(domain):
     pages = float('inf')
     page = 1
 
-    censysio_id = vault.get_key('censysio_id')
-    censysio_secret = vault.get_key('censysio_secret')
+    censysio_id = get_config_value('censysio_id')
+    censysio_secret = get_config_value('censysio_secret')
 
     while page <= pages:
-        print "Parsed and collected results from page %s" % (str(page))
+        print("Parsed and collected results from page %s" % str(page))
         #time.sleep(0.5)
         params = {'query': domain, 'page': page}
         res = requests.post("https://www.censys.io/api/v1/search/ipv4", json=params,
                             auth=(censysio_id, censysio_secret))
         payload = res.json()
 
-        if 'error' not in payload.keys():
-            if 'results' in payload.keys():
+        if 'error' not in payload:
+            if 'results' in payload:
                 for r in payload['results']:
                     temp_dict = {}
                     ip = r["ip"]
@@ -63,41 +57,34 @@ def censys_search(domain):
             break
     return censys_list
 
-
 def view(server, temp_dict):
-    censysio_id = vault.get_key('censysio_id')
-    censysio_secret = vault.get_key('censysio_secret')
+    censysio_id = get_config_value('censysio_id')
+    censysio_secret = get_config_value('censysio_secret')
     res = requests.get("https://www.censys.io/api/v1/view/ipv4/%s" % (server),
                        auth=(censysio_id, censysio_secret))
     payload = res.json()
 
     try:
-        if 'title' in payload['80']['http']['get'].keys():
-            # print "[+] Title: %s" % payload['80']['http']['get']['title']
+        if 'title' in payload['80']['http']['get']:
+            # print("[+] Title: %s" % payload['80']['http']['get']['title'])
             title = payload['80']['http']['get']['title']
             temp_dict['title'] = title
-        if 'server' in payload['80']['http']['get']['headers'].keys():
+        if 'server' in payload['80']['http']['get']['headers']:
             header = "[+] Server: %s" % payload['80']['http']['get']['headers']['server']
             temp_dict["server_header"] = payload['80']['http']['get']['headers']['server']
         return temp_dict
 
     except Exception as error:
-        print error
-
+        print(error)
 
 def output(data, domain=""):
     if data is not None:
         for i in data:
-            print i
-
+            print(i)
 
 def main(domain):
-    if check_api_keys() == True:
-        data = censys_search(domain)
-        return data
-    else:
-        print colored(style.BOLD + '\n[-] Please configure respective API Keys for this module.\n' + style.END, 'red')
-        return None
+    data = censys_search(domain)
+    return data
 
 if __name__ == "__main__":
     try:
@@ -105,5 +92,5 @@ if __name__ == "__main__":
         result = main(domain)
         output(result, domain)
     except Exception as e:
-        print e
-        print colored(style.BOLD + '\n[-] Please provide a domain name as argument\n' + style.END, 'red')
+        print(e)
+        print(colored(style.BOLD + '\n[-] Please provide a domain name as argument\n' + style.END, 'red'))

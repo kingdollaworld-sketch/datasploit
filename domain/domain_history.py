@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
-import base
+try:
+    from ..core.style import style
+except ImportError:  # pragma: no cover - legacy script execution
+    from core.style import style
+
 import sys
 import requests
 from bs4 import BeautifulSoup
@@ -9,20 +13,16 @@ from termcolor import colored
 import time
 
 ENABLED = True
-
-
-class style:
-    BOLD = '\033[1m'
-    END = '\033[0m'
-
+MODULE_NAME = "Domain History"
+REQUIRES = ()
 
 def netcraft_domain_history(domain):
     ip_history_dict = {}
     time.sleep(0.3)
-    endpoint = "http://toolbar.netcraft.com/site_report?url=%s" % (domain)
+    endpoint = "http://toolbar.netcraft.com/site_report?url=%s" % domain
     req = requests.get(endpoint)
 
-    soup = BeautifulSoup(req.content, 'html.parser')
+    soup = BeautifulSoup(req.text, 'html.parser')
     urls_parsed = soup.findAll('a', href=re.compile(r'.*netblock\?q.*'))
     for url in urls_parsed:
         if urls_parsed.index(url) != 0:
@@ -30,20 +30,16 @@ def netcraft_domain_history(domain):
                 "<td>").strip("</td>")
     return ip_history_dict
 
-
 def banner():
-    print colored(style.BOLD + '\n---> Searching Domain history in Netcraft\n' + style.END, 'blue')
-
+    return f"Running {MODULE_NAME}"
 
 def main(domain):
     return netcraft_domain_history(domain)
 
-
 def output(data, domain=""):
     for x in data.keys():
-        print "%s: %s" % (data[x], x)
-    print "\n-----------------------------\n"
-
+        print("%s: %s" % (data[x], x))
+    print("\n-----------------------------\n")
 
 if __name__ == "__main__":
     try:
@@ -52,5 +48,5 @@ if __name__ == "__main__":
         result = main(domain)
         output(result, domain)
     except Exception as e:
-        print e
-        print "Please provide a domain name as argument"
+        print(e)
+        print("Please provide a domain name as argument")

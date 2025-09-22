@@ -1,10 +1,21 @@
-from os.path import dirname, basename, isfile, abspath
-import glob, importlib, sys
+"""Username collectors for DataSploit."""
 
-modules = glob.glob(dirname(__file__) + "/username_*.py")
-__all__ = [basename(f)[:-3] for f in modules if isfile(f)]
-sys.path.append(dirname(abspath(__file__)))
+from importlib import import_module
+import pkgutil
+from pathlib import Path
 
-for m in __all__:
-	__import__(m, locals(), globals())
-del m, f, dirname, basename, isfile, abspath, glob, importlib, sys, modules
+__all__ = []
+
+_PACKAGE_PATH = Path(__file__).resolve().parent
+
+for module_info in pkgutil.iter_modules([str(_PACKAGE_PATH)]):
+    if module_info.ispkg:
+        continue
+
+    module_name = module_info.name
+    if module_name.startswith(("_", "template")):
+        continue
+
+    module = import_module(f"{__name__}.{module_name}")
+    globals()[module_name] = module
+    __all__.append(module_name)

@@ -32,7 +32,7 @@ Now dataSploit is ready and can be used in any python project as a library. Foll
 
 >>> from datasploit.emails import email_basic_checks
 >>> data = email_basic_checks.main("info@google.com")
->>> print data
+>>> print(data)
 {u'free': False, u'domain': u'google.com', u'disposable': False, u'format_valid': True, u'did_you_mean': u'', u'catch_all': None, u'score': 0.8, u'role': True, u'user': u'info', u'smtp_check': True, u'email': u'info@google.com', u'mx_found': True}
 >>> email_basic_checks.output(data)
 Is it a free Email Address?: No
@@ -49,8 +49,8 @@ If you're looking to use dataSploit quickly for scavenging information, you can 
 # git clone https://github.com/datasploit/datasploit /etc/datasploit
 # cd /etc/datasploit/
 # pip install -r requirements.txt
-# mv config_sample.py config.py
-# vi config.py
+# cp config.template.ini config.ini
+# vi config.ini
 ```
 
 The steps mentioned above are all that is required to get dataSploit up and running. Once done, following is the sample usage of different modules or dataSploit as a whole.
@@ -67,7 +67,7 @@ The steps mentioned above are all that is required to get dataSploit up and runn
                       Website: www.datasploit.info
 
 User Input: test.com
-Looks like a DOMAIN, running domainOsint...
+Looks like a DOMAIN, running domain collectors...
 
 ---> Trying luck with PunkSpider
 
