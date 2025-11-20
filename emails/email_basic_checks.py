@@ -1,61 +1,57 @@
 #!/usr/bin/env python
 
-import base
-import vault
+try:
+    from ..core.style import style
+    from ..core.config import get_config_value
+except ImportError:  # pragma: no cover - legacy script execution
+    from core.style import style
+    from core.config import get_config_value
+
 import requests
-import json
 import sys
 import re
 from termcolor import colored
 
 ENABLED = True
-
-
-class style:
-    BOLD = '\033[1m'
-    END = '\033[0m'
-
+MODULE_NAME = "Email Basic Checks"
+REQUIRES = ("mailboxlayer_api",)
 
 def basic_checks(email):
     if re.match('[^@]+@[^@]+\.[^@]+', email):
-        mailboxlayer_api = vault.get_key('mailboxlayer_api')
-        if vault.get_key('mailboxlayer_api') != None:
+        mailboxlayer_api = get_config_value('mailboxlayer_api')
+        if get_config_value('mailboxlayer_api') is not None:
             url = "http://apilayer.net/api/check?access_key=%s&email=%s&smtp=1&format=1" % (mailboxlayer_api, email)
             req = requests.get(url)
-            resp = json.loads(req.text)
+            resp = req.json()
             return resp
         else:
             return -2
     else:
         return -1
 
-
 def output(data, email=""):
     if data == -1:
-        print colored(style.BOLD + '\n[-] Please pass a valid email ID.\n' + style.END, 'red')
+        print(colored(style.BOLD + '\n[-] Please pass a valid email ID.\n' + style.END, 'red'))
     elif data == -2:
-        print colored(style.BOLD + '\n[-] MailBoxLayer_API Key not configured. Skipping basic checks.\nPlease refer to http://datasploit.readthedocs.io/en/latest/apiGeneration/.\n' + style.END, 'red')
+        print(colored(style.BOLD + '\n[-] MailBoxLayer_API Key not configured. Skipping basic checks.\nPlease refer to http://datasploit.readthedocs.io/en/latest/apiGeneration/.\n' + style.END, 'red'))
     else:
-        print "Is it a free Email Address?:",
-        print "No" if not data['free'] else "Yes"
+        print("Is it a free Email Address?:", end=' ')
+        print("No" if not data['free'] else "Yes")
 
-        print "Email ID Exist?: ",
-        print "Yes" if data['smtp_check'] else "No"
+        print("Email ID Exist?: ", end=' ')
+        print("Yes" if data['smtp_check'] else "No")
 
-        print "Can this domain recieve emails?: ",
-        print "Yes" if data['mx_found'] else "No"
+        print("Can this domain recieve emails?: ", end=' ')
+        print("Yes" if data['mx_found'] else "No")
 
-        print "Is it a Disposable email?: ",
-        print "Yes" if data['disposable'] else "No"
-
+        print("Is it a Disposable email?: ", end=' ')
+        print("Yes" if data['disposable'] else "No")
 
 def banner():
-    print colored(style.BOLD + '\n---> Basic Email Check(s)..\n' + style.END, 'blue')
-
+    return f"Running {MODULE_NAME}"
 
 def main(email):
     return basic_checks(email)
-
 
 if __name__ == "__main__":
     try:
@@ -64,5 +60,5 @@ if __name__ == "__main__":
         result = main(email)
         output(result, email)
     except Exception as e:
-        print e
-        print "Please provide an email as argument"
+        print(e)
+        print("Please provide an email as argument")

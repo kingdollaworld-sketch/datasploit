@@ -1,48 +1,49 @@
 #!/usr/bin/env python
 
-import base
-import vault
+try:
+    from ..core.style import style
+    from ..core.config import get_config_value
+except ImportError:  # pragma: no cover - legacy script execution
+    from core.style import style
+    from core.config import get_config_value
+
 import sys
 import requests
-import json
 from termcolor import colored
 
 # Control whether the module is enabled or not
 ENABLED = True
-
-class style:
-    BOLD = '\033[1m'
-    END = '\033[0m'
+MODULE_NAME = "IP Virustotal"
+REQUIRES = ("virustotal_public_api",)
 
 def banner():
-    # Write a cool banner here
-    print colored(style.BOLD + "[+] Searching in VirusTotal Dataset" + style.END)
-    pass
-
+    return f"Running {MODULE_NAME}"
 
 def main(ip):
-    # Use the ip variable to do some stuff and return the data
-    if vault.get_key('virustotal_public_api') != None:
-        print ip
-        api = vault.get_key('virustotal_public_api')
-        params = "{'ip': '%s', 'apikey': '%s'}" % (ip, api)
-        url = "http://www.virustotal.com/vtapi/v2/ip-address/report?ip=%s&apikey=%s" % (ip, api)
-        req = requests.get(url, params)
-        return req
-    else:
+    api_key = get_config_value('virustotal_public_api')
+    if api_key is None:
         return [False, "INVALID_API"]
 
+    params = {'ip': ip, 'apikey': api_key}
+    url = "https://www.virustotal.com/vtapi/v2/ip-address/report"
+    response = requests.get(url, params=params)
+    try:
+        return response.json()
+    except ValueError:
+        return {}
 
 def output(data, ip=""):
-    # Use the data variable to print out to console as you like
-    if type(data) == list and data[1] == "INVALID_API":
-        print colored(
-                style.BOLD + '\n[-] VirusTotal API Key not configured. Skipping VirusTotal Search.\nPlease refer to http://datasploit.readthedocs.io/en/latest/apiGeneration/.\n' + style.END, 'red')
-    else:
-        for i in data:
-            print i
-            print ""
+    if isinstance(data, list) and data[1] == "INVALID_API":
+        print(colored(style.BOLD + '\n[-] VirusTotal API Key not configured. Skipping VirusTotal Search.\nPlease refer to http://datasploit.readthedocs.io/en/latest/apiGeneration/.\n' + style.END, 'red'))
+        return
 
+    if not data:
+        print("[-] No data returned from VirusTotal.")
+        return
+
+    for key, value in data.items():
+        print(f"{key}: {value}")
+    print("")
 
 if __name__ == "__main__":
     try:
@@ -51,5 +52,5 @@ if __name__ == "__main__":
         result = main(ip)
         output(result, ip)
     except Exception as e:
-        print e
-        print "Please provide an IP Address as argument"
+        print(e)
+        print("Please provide an IP Address as argument")

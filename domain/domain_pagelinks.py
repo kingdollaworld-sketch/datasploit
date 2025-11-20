@@ -1,43 +1,39 @@
 #!/usr/bin/env python
 
-import base
+try:
+    from ..core.style import style
+except ImportError:  # pragma: no cover - legacy script execution
+    from core.style import style
+
 import sys
 import requests
 from termcolor import colored
 import time
 
 ENABLED = True
-
-
-class style:
-    BOLD = '\033[1m'
-    END = '\033[0m'
-
+MODULE_NAME = "Domain Page Links"
+REQUIRES = ()
 
 def pagelinks(domain):
     time.sleep(0.3)
     try:
-        req = requests.get('http://api.hackertarget.com/pagelinks/?q=%s' % (domain))
-        page_links = req.content.split("\n")
+        req = requests.get('http://api.hackertarget.com/pagelinks/?q=%s' % domain)
+        page_links = req.text.splitlines()
         return page_links
     except:
-        print 'Connection time out.'
+        print('Connection time out.')
         return []
 
-
 def banner():
-    print colored(style.BOLD + '\n---> Finding Pagelinks:\n' + style.END, 'blue')
-
+    return f"Running {MODULE_NAME}"
 
 def main(domain):
     return pagelinks(domain)
 
-
 def output(data, domain=""):
     for x in data:
-        print x
-    print "\n-----------------------------\n"
-
+        print(x)
+    print("\n-----------------------------\n")
 
 if __name__ == "__main__":
     try:
@@ -46,5 +42,5 @@ if __name__ == "__main__":
         result = main(domain)
         output(result, domain)
     except Exception as e:
-        print e
-        print "Please provide a domain name as argument"
+        print(e)
+        print("Please provide a domain name as argument")

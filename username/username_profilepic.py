@@ -1,39 +1,42 @@
 #!/usr/bin/env python
 
-import base
+try:
+    from ..core.style import style
+except ImportError:  # pragma: no cover - legacy script execution
+    from core.style import style
+
 import os
 import sys
 import requests
-import urllib
+import urllib.request, urllib.parse, urllib.error
 from bs4 import BeautifulSoup
-import username_usernamesearch
+from . import username_usernamesearch
 from termcolor import colored
 
 # Control whether the module is enabled or not
 ENABLED = True
-
-
-class style:
-    BOLD = '\033[1m'
-    END = '\033[0m'
-
+MODULE_NAME = "Username Profile Pic"
+REQUIRES = ()
 
 def extracting(imglinks, username, prourl, tag, attribute, value, finattrib, profile):
     res = requests.get(prourl)
-    soup = BeautifulSoup(res.content, "lxml")
+    soup = BeautifulSoup(res.text, "lxml")
     img = soup.find(tag, {attribute: value})
-    if profile == "ask.fm" and not img[finattrib].startswith("http"):
-        img[finattrib] = "http:" + img[finattrib]
-        imglinks.append(img[finattrib])
-        path = "profile_pic/" + username + "/" + profile + ".jpg"
-        urllib.urlretrieve(img[finattrib], path)
-    else:
-        if img is not None:
-            imglinks.append(img.get(finattrib))
-            path = "profile_pic/" + username + "/" + profile + ".jpg"
-            urllib.urlretrieve(img.get(finattrib), path)
-    return imglinks
+    if img is None:
+        return imglinks
 
+    img_url = img.get(finattrib)
+    if not img_url:
+        return imglinks
+
+    if profile == "ask.fm" and not img_url.startswith("http"):
+        img_url = "http:" + img_url
+
+    imglinks.append(img_url)
+    path = os.path.join("profile_pic", username, profile + ".jpg")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    urllib.request.urlretrieve(img_url, path)
+    return imglinks
 
 def profilepic(urls, username):
     imagelinks = []
@@ -207,10 +210,8 @@ def profilepic(urls, username):
                 pass
     return imagelinks
 
-
 def banner():
-    print colored(style.BOLD + '\n[+] Getting Profile Pics\n' + style.END, 'blue')
-
+    return f"Running {MODULE_NAME}"
 
 def main(username):
     usernames = username_usernamesearch.main(username)
@@ -218,14 +219,12 @@ def main(username):
     if not os.path.exists(file_path):
         os.makedirs(file_path)
     imagelinks = profilepic(usernames, username)
-    print "Profile Pics saved to : %s" % file_path
+    print("Profile Pics saved to : %s" % file_path)
     return imagelinks
-
 
 def output(data, username=""):
     for link in data:
-        print link
-
+        print(link)
 
 if __name__ == "__main__":
     #try:
@@ -235,6 +234,6 @@ if __name__ == "__main__":
     output(result, username)
     '''
     except Exception as e:
-        print e
-        print "Please provide a username as argument"
+        print(e)
+        print("Please provide a username as argument")
     '''

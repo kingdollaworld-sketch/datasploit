@@ -5,7 +5,7 @@
 * Use specific script / launch automated OSINT for consolidated data.
 * Available in both GUI and Console.
  
-Following API configs are mandatory for proper results in domainOsint.py:
+Following API configs are useful for domain-oriented collectors:
 * shodan_api
 * censysio_id
 * censysio_secret
@@ -20,32 +20,27 @@ Other modules:
 
 
 ## Before running the program, please make sure that you have:
-* Changed the name of the file 'config_sample.py' to config.py
-* Entered all the required APIs in config.py file, as mentioned above. 
+* Copied `config.template.ini` to `config.ini`
+* Entered all the required APIs in the `config.ini` file, as mentioned above. 
 
 
 ## Usage
-To launch an automated OSINT on domain, shoot following query:
+To launch an automated OSINT run:
 
 ```
-python domainOsint.py <domain_name>
-```
-You can also run an standalone script, e.g.you might want to only run the subdomain finding script and avoid all other modules. In such case, use below mentioned command. *All the files starting with domain_ requires a domain name to be passed as first argument. Same follows for email, ip, etc.*
-
-```
-python domain_subdomain.py <domain_name>
+python datasploit.py -i <target>
 ```
 
-To launch an automated OSINT on domain, shoot following query:
+You can also run a standalone collector. For example, if you only want to enumerate subdomains:
 
 ```
-python domainOsint.py <domain_name>
+python domain/domain_subdomains.py <domain_name>
 ```
 
 ## SETUP and Contribution
-* Change config_sample.py to config.py
+* Copy `config.template.ini` to `config.ini`
 ```
-mv config_sample.py config.py
+cp config.template.ini config.ini
 ```
 * Configure respective API keys. Documentation for generating these keys will be shared very shortly. Believe us, we are working hard to get things in place. 
 * Sources for which API keys are missing, will be simply skipped for the search. 
@@ -64,4 +59,3 @@ If you have updated the code and want to push the pip dependencies in the requir
 ```
 pip freeze > requirements.txt
 ```
-

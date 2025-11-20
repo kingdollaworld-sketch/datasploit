@@ -1,19 +1,12 @@
 Datasploit allows you to perform OSINT on a domain_name, email_id, username and phoneNumber. In order to launch any script, lets first understand the nomenclature of these scripts:
 
 * All the scripts meant to perform osint on domain starts with the keyword ***'domain_'***. Eg. domain_subdomains, domain_whois, etc. In similar manner, scripts for osint on email_id starts with ***'email_'***, eg. email_fullcontact. 
-* Scripts with an *underscore* are standalone scripts and collects data of one specific kind. 
-* Scripts without an underscore are the ones used for automated collection of data using standalone scripts. Eg. domainOsint.py
+* Scripts with an *underscore* are standalone scripts and collect data of one specific kind. They can still be executed directly for focused checks (e.g. `python domain/domain_subdomains.py example.com`).
+* `datasploit.py` is the orchestrator. Point it at any supported target and it will classify the input and execute the relevant collectors automatically.
 
-In order to run any script, pass the respective argument. For example, domainOsint and domain_subdomains.py will expect a domain name to be passed.
+Run the orchestrator with the `-i/--input` flag, or supply a file via `-f/--file`:
 ```
-python domainOsint.py -d example.com
-python domain_subdomains.py example.com
+python datasploit.py -i example.com
+python datasploit.py -f targets.txt -o text
 ```
-While, domainOsint will call all other domain_* scripts and list down data as well as dump the same in mongoDb, domain_subdomains and other such scripts will just list down data specific to their function. 
-
-domainOsint.py generates a JSON report in reports folder as following hirarchy (example files are based on abcd.com domain)
-
-```
-python domainOsint.py -d example.com -o json
-```
-
+The `-o text` switch writes per-collector text reports to the working directory. JSON/HTML reporting can be added in a similar fashion by extending the shared runner.

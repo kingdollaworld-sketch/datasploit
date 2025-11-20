@@ -1,79 +1,85 @@
 #!/usr/bin/env python
 
-import base
+try:
+    from ..core.style import style
+    from ..core.config import get_config_value
+except ImportError:  # pragma: no cover - legacy script execution
+    from core.style import style
+    from core.config import get_config_value
+
 import requests
-import json
 import sys
-import vault
 from termcolor import colored
 import time
 
 ENABLED = False
+MODULE_NAME = "Domain Zoomeye"
+REQUIRES = ("zoomeyeuser", "zoomeyepass")
 
-
-class style:
-    BOLD = '\033[1m'
-    END = '\033[0m'
-
-
-def get_accesstoken_zoomeye(domain):
-    username = vault.get_key('zoomeyeuser')
-    password = vault.get_key('zoomeyepass')
+def get_accesstoken_zoomeye():
+    username = get_config_value('zoomeyeuser')
+    password = get_config_value('zoomeyepass')
     headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
     datalogin = '{"username": "%s","password": "%s"}' % (username, password)
     s = requests.post("https://api.zoomeye.org/user/login", data=datalogin, headers=headers)
-    responsedata = json.loads(s.text)
-    if "error" in responsedata and responsedata['error'] == "bad_request":
-	return False
-    access_token1 = responsedata.get('access_token', "78c4a2dd70ddeffc5fc3c0639f86245a")
-    return access_token1
-
+    try:
+        responsedata = s.json()
+    except ValueError:
+        return False
+    if responsedata.get('error') == "bad_request":
+        return False
+    return responsedata.get('access_token')
 
 def search_zoomeye(domain):
     time.sleep(0.3)
-    zoomeye_token = get_accesstoken_zoomeye(domain)
+    zoomeye_token = get_accesstoken_zoomeye()
     if not zoomeye_token:
-	return [False, "BAD_API"]
-    authData = {"Authorization": "JWT " + str(zoomeye_token)}
-    req = requests.get('http://api.zoomeye.org/web/search/?query=site:%s&page=1' % domain, headers=authData)
-    return True, req.text
-
+        return False, "BAD_API"
+    auth_data = {"Authorization": "JWT " + str(zoomeye_token)}
+    req = requests.get('https://api.zoomeye.org/web/search/?query=site:%s&page=1' % domain, headers=auth_data)
+    try:
+        return True, req.json()
+    except ValueError:
+        return False, "BAD_RESPONSE"
 
 def banner():
-    print colored(style.BOLD + '\n---> Finding hosts from ZoomEye\n' + style.END, 'blue')
-
+    return f"Running {MODULE_NAME}"
 
 def main(domain):
-    if vault.get_key('zoomeyepass') != "" and vault.get_key('zoomeyeuser') != "":
-        zoomeye_results = search_zoomeye(domain)
-	if zoomeye_results[0]:
-	        return True, json.loads(zoomeye_results)
-	else:
-		return zoomeye_results
-    else:
+    if not get_config_value('zoomeyeuser') or not get_config_value('zoomeyepass'):
         return [False, "INVALID_API"]
 
+    success, payload = search_zoomeye(domain)
+    if not success:
+        return [False, payload]
+    return payload
 
 def output(data, domain=""):
-    if type(data) == list and data[1] == "INVALID_API":
-        print colored(
-                style.BOLD + '\n[-] ZoomEye username and password not configured. Skipping Zoomeye Search.\nPlease refer to http://datasploit.readthedocs.io/en/latest/apiGeneration/.\n' + style.END, 'red')
-    elif type(data) == list and data[1] == "BAD_API":
-	print colored(
-                style.BOLD + '\n[-] ZoomEye API is not functional right now.\n' + style.END, 'red')
-    else:
-        if 'matches' in data.keys():
-            print len(data['matches'])
-            for x in data['matches']:
-                if x['site'].split('.')[-2] == domain.split('.')[-2]:
-                    if 'title' in x.keys():
-                        print "IP: %s\nSite: %s\nTitle: %s\nHeaders: %s\nLocation: %s\n" % (
-                            x['ip'], x['site'], x['title'], x['headers'].replace("\n\n", ""), x['geoinfo'])
-                    else:
-                        for val in x.keys():
-                            print "%s: %s" % (val, x[val])
-        print "\n-----------------------------\n"
+    if isinstance(data, list):
+        if data[1] == "INVALID_API":
+            print(colored(style.BOLD + '\n[-] ZoomEye username and password not configured. Skipping Zoomeye Search.\nPlease refer to http://datasploit.readthedocs.io/en/latest/apiGeneration/.\n' + style.END, 'red'))
+        elif data[1] == "BAD_API":
+            print(colored(style.BOLD + '\n[-] ZoomEye API is not functional right now.\n' + style.END, 'red'))
+        elif data[1] == "BAD_RESPONSE":
+            print(colored(style.BOLD + '\n[-] Unexpected response from ZoomEye API.\n' + style.END, 'red'))
+        return
 
+    if 'matches' in data:
+        print(len(data['matches']))
+        for entry in data['matches']:
+            if entry['site'].split('.')[-2] == domain.split('.')[-2]:
+                if 'title' in entry:
+                    print("IP: %s\nSite: %s\nTitle: %s\nHeaders: %s\nLocation: %s\n" % (
+                        entry.get('ip', ''),
+                        entry.get('site', ''),
+                        entry.get('title', ''),
+                        entry.get('headers', '').replace("\n\n", ""),
+                        entry.get('geoinfo', {})
+                    ))
+                else:
+                    for key, value in entry.items():
+                        print("%s: %s" % (key, value))
+        print("\n-----------------------------\n")
 
 if __name__ == "__main__":
     domain = sys.argv[1]

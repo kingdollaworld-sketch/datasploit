@@ -1,19 +1,18 @@
 #!/usr/bin/env python
 
-import base
+try:
+    from ..core.style import style
+except ImportError:  # pragma: no cover - legacy script execution
+    from core.style import style
+
 import sys
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import re
-import string
 from termcolor import colored
 
 ENABLED = False
-
-
-class style:
-    BOLD = '\033[1m'
-    END = '\033[0m'
-
+MODULE_NAME = "Domain Google PDF Search"
+REQUIRES = ()
 
 def googlesearch(query, ext):
     google = "https://www.google.co.in/search?filter=0&q=site:"
@@ -26,21 +25,20 @@ def googlesearch(query, ext):
         'Accept-Language': 'en-US,en;q=0.8',
         'Connection': 'keep-alive'
     }
-    req = urllib2.Request(getrequrl, headers=hdr)
-    response = urllib2.urlopen(req)
-    data = response.read()
+    req = urllib.request.Request(getrequrl, headers=hdr)
+    response = urllib.request.urlopen(req)
+    data = response.read().decode('utf-8', 'ignore')
     data = re.sub('<b>', '', data)
     for e in ('>', '=', '<', '\\', '(', ')', '"', 'http', ':', '//'):
-        data = string.replace(data, e, ' ')
+        data = data.replace(e, ' ')
 
-    r1 = re.compile('[-_.a-zA-Z0-9.-_]*' + '\.' + ext)
+    pattern = r"[-_.a-zA-Z0-9.-_]*\." + re.escape(ext)
+    r1 = re.compile(pattern)
     res = r1.findall(data)
     return res
 
-
 def banner():
-    print colored(style.BOLD + '\n---> Searching Google for domain results\n' + style.END, 'blue')
-
+    return f"Running {MODULE_NAME}"
 
 def main(domain):
     list_ext = {"pdf": [], "xls": [], "docx": []}
@@ -50,16 +48,14 @@ def main(domain):
         list_ext[x] = results
     return list_ext
 
-
 def output(data, domain=""):
-    for key, results in data.iteritems():
+    for key, results in data.items():
         if results:
             results = set(results)
             for x in results:
                 x = re.sub('<li class="first">', '', x)
                 x = re.sub('</li>', '', x)
-                print x
-
+                print(x)
 
 if __name__ == "__main__":
     try:
@@ -68,5 +64,5 @@ if __name__ == "__main__":
         result = main(domain)
         output(result, domain)
     except Exception as e:
-        print e
-        print "Please provide a domain name as argument"
+        print(e)
+        print("Please provide a domain name as argument")
